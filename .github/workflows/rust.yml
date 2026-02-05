@@ -19,8 +19,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         targets: xtensa-esp32s3-none-elf
-    - uses: esp-rs/espup-action@v1
-      with:
-        targets: esp32s3
+    - name: Install espup
+      run: cargo install espup --locked && espup install
     - name: Build
       run: cd bike-computer && cargo build
