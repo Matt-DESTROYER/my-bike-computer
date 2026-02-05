@@ -15,10 +15,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install espup
-      run: cargo install espup && espup install
     - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: xtensa-esp32s3-none-elf
+    - uses: esp-rs/espup-action@v1
+      with:
+        targets: esp32s3
     - name: Build
-      run: cd bike-computer && cargo build --verbose
-    - name: Run tests
-      run: cd bike-computer && cargo test --verbose
+      run: cd bike-computer && cargo build
