@@ -7,9 +7,12 @@ fn main() {
 fn linker_be_nice() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() > 1 {
+        if args.len() < 3 {
+            eprintln!("💡 Linker error handler invoked without enough arguments.");
+            std::process::exit(1);
+        }
         let kind = &args[1];
         let what = &args[2];
-
         match kind.as_str() {
             "undefined-symbol" => match what.as_str() {
                 what if what.starts_with("_defmt_") => {
