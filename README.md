@@ -7,13 +7,13 @@ Paired with a Beitian BN 880 GPS and a 32 GB SD card; the plan is a bicycle comp
 ## Setting up your environment
 To build this project for ESP chips, you will need the following setup:
 ```sh
-cargo install espup
+cargo install espup --locked
 espup install
 ```
 > Note: this will probably take a little while.
 
 ### To generate your own project:
 ```sh
-cargo install esp-generate
+cargo install esp-generate --locked
 esp-generate --chip chip-name project-name
 ```
