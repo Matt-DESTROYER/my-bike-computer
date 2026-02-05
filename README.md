@@ -9,6 +9,11 @@ To build this project for ESP chips, you will need the following setup:
 ```sh
 cargo install espup
 espup install
-cargo install cargo-generate
 ```
 > Note: this will probably take a little while.
+
+### To generate your own project:
+```sh
+cargo install esp-generate
+esp-generate --chip chip-name project-name
+```
