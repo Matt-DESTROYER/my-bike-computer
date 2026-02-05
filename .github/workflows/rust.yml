@@ -2,9 +2,11 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,4 +24,11 @@ jobs:
         buildtargets: esp32s3
         ldproxy: false
     - name: Build
-      run: cd bike-computer && cargo build
+      run: cd bike-computer && cargo build --release
+    - name: Upload artifact
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'regs.tags/')
+      with:
+        files: bike-computer/target/xtensa-esp32s3-none-elf/release/bike-computer
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
