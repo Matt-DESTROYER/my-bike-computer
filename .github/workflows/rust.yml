@@ -27,7 +27,7 @@ jobs:
       run: cd bike-computer && cargo build --release
     - name: Upload artifact
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'regs.tags/')
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: bike-computer/target/xtensa-esp32s3-none-elf/release/bike-computer
       env:
