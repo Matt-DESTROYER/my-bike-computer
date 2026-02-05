@@ -16,10 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: esp-rs/xtensa-toolchain@v1.5
       with:
-        targets: xtensa-esp32s3-none-elf
-    - name: Install espup
-      run: cargo install espup --locked && espup install
+        default: true
+        buildtargets: esp32s3
+        ldproxy: false
     - name: Build
       run: cd bike-computer && cargo build
