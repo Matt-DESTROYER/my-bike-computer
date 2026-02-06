@@ -17,6 +17,10 @@ To flash the firmware onto the drive just run in release, `esp-genereate` will a
 ```sh
 cargo run --release
 ```
+If you want to flash a specific file:
+```sh
+espflash flash file-name --monitor
+```
 
 ### To generate your own project:
 ```sh
