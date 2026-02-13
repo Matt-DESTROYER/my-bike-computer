@@ -13,7 +13,7 @@ espup install
 > Note: this will probably take a little while.
 
 ## Flashing to your ESP device:
-To flash the firmware onto the drive just run in release, `esp-genereate` will automatically scan for the ESP device and if found flash the firmware onto it.
+To flash the firmware onto the drive just run in release, `esp-generate` will automatically scan for the ESP device and if found flash the firmware onto it.
 ```sh
 cargo run --release
 ```
