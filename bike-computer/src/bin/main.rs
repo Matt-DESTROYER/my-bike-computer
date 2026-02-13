@@ -24,6 +24,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
 extern crate alloc;
 
+mod nmea;
+
 const CONNECTIONS_MAX: usize = 1;
 const L2CAP_CHANNELS_MAX: usize = 1;
 
