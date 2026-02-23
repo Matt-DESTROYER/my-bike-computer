@@ -29,11 +29,25 @@ pub enum Quality {
 	EstimatedFix
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum NavMode {
+	NotAvailable,
+	Fix2D,
+	Fix3D
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Time {
 	hour: u16,
 	minute: u16,
 	second: f32
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Date {
+	day: u8,
+	month: u8,
+	year: u8
 }
 
 #[derive(Debug)]
@@ -55,19 +69,68 @@ pub struct GGA {
 }
 
 #[derive(Debug)]
-pub struct GLL {}
+pub struct GLL {
+	pub lat: f64,     // latitude
+	pub NS: char,     // North/South indicator
+	pub long: f64,    // Longitude
+	pub EW: char,     // East/West indicator
+	pub time: Time,   // UTC time
+	pub status: char, // V = Data invalid or receiver warning, A = Data valid
+	pub posMode: char // positioning mode
+}
 
 #[derive(Debug)]
-pub struct GSA {}
+pub struct GSA {
+	pub opMode: char,
+	pub navMode: NavMode,
+	pub sv: [u8; 12],
+	pub PDOP: f64,
+	pub HDOP: f64,
+	pub VDOP: f64,
+	pub systemId: u8
+}
 
 #[derive(Debug)]
-pub struct GSV {}
+pub struct GSV {
+	pub numMsg: u8,
+	pub msgNum: u8,
+	pub numSV: u8,
+	pub SV: [u8; 4],
+	pub elv: [u8; 4],
+	pub az: [u16; 4],
+	pub cno: [u8; 4],
+	pub signalId: u8
+}
 
 #[derive(Debug)]
-pub struct RMC {}
+pub struct RMC {
+	pub time: Time,
+	pub status: char,
+	pub lat: f64,
+	pub NS: char,
+	pub long: f64,
+	pub EW: char,
+	pub spd: f64,
+	pub cog: f64,
+	pub date: Date,
+	pub mv: f64,
+	pub mvEW: char,
+	pub posMode: char,
+	pub navStatus: char
+}
 
 #[derive(Debug)]
-pub struct VTG {}
+pub struct VTG {
+	pub cogt: f64,
+	pub T: char,
+	pub cogm: f64,
+	pub M: char,
+	pub knots: f64,
+	pub N: char,
+	pub kph: f64,
+	pub K: char,
+	pub posMode: char
+}
 
 #[derive(Debug)]
 pub enum ParserResult {
@@ -77,21 +140,6 @@ pub enum ParserResult {
 	GSV(GSV),
 	RMC(RMC),
 	VTG(VTG)
-}
-
-fn check_format_equals(format: &[u8], cmp: &str) -> bool {
-	let cmp_bytes = cmp.as_bytes();
-	let iters = if cmp.len() > format.len() {
-		format.len()
-	} else {
-		cmp.len()
-	};
-	for i in 0..iters {
-		if format[i] != cmp_bytes[i] {
-			return false;
-		}
-	}
-	return true;
 }
 
 fn init_format(format: MessageType) -> Option<ParserResult> {
@@ -116,11 +164,72 @@ fn init_format(format: MessageType) -> Option<ParserResult> {
 			diffAge: None,
 			diffStation: None
 		})),
-		MessageType::GLL => Some(ParserResult::GLL(GLL {})),
-		MessageType::GSA => Some(ParserResult::GSA(GSA {})),
-		MessageType::GSV => Some(ParserResult::GSV(GSV {})),
-		MessageType::RMC => Some(ParserResult::RMC(RMC {})),
-		MessageType::VTG => Some(ParserResult::VTG(VTG {})),
+		MessageType::GLL => Some(ParserResult::GLL(GLL {
+			lat: 0.0,
+			NS: '\0',
+			long: 0.0,
+			EW: '\0',
+			time: Time {
+				hour: 0,
+				minute: 0,
+				second: 0.0
+			},
+			status: '\0',
+			posMode: '\0'
+		})),
+		MessageType::GSA => Some(ParserResult::GSA(GSA {
+			opMode: '\0',
+			navMode: NavMode::NotAvailable,
+			sv: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+			PDOP: 0.0,
+			HDOP: 0.0,
+			VDOP: 0.0,
+			systemId: 0
+		})),
+		MessageType::GSV => Some(ParserResult::GSV(GSV {
+			numMsg: 0,
+			msgNum: 0,
+			numSV: 0,
+			SV: [0, 0, 0, 0],
+			elv: [0, 0, 0, 0],
+			az: [0, 0, 0, 0],
+			cno: [0, 0, 0, 0],
+			signalId: 0
+		})),
+		MessageType::RMC => Some(ParserResult::RMC(RMC {
+			time: Time {
+				hour: 0,
+				minute: 0,
+				second: 0.0
+			},
+			status: '\0',
+			lat: 0.0,
+			NS: '\0',
+			long: 0.0,
+			EW: '\0',
+			spd: 0.0,
+			cog: 0.0,
+			date: Date {
+				day: 0,
+				month: 0,
+				year: 0
+			},
+			mv: 0.0,
+			mvEW: '\0',
+			posMode: '\0',
+			navStatus: '\0'
+		})),
+		MessageType::VTG => Some(ParserResult::VTG(VTG {
+			cogt: 0.0,
+			T: '\0',
+			cogm: 0.0,
+			M: '\0',
+			knots: 0.0,
+			N: '\0',
+			kph: 0.0,
+			K: '\0',
+			posMode: '\0'
+		})),
 		_ => None
 	}
 }
@@ -319,6 +428,7 @@ impl Parser {
 		}
 
 		if let Some(ref mut result) = self.result {
+			let current_buffer = &self.buffer[0..self.index];
 			match result {
 				ParserResult::GGA(gga) => {
 					match self.value_index {
@@ -376,15 +486,15 @@ impl Parser {
 						},
 						// numSV numeric
 						7 => {
-							gga.numSV = Parser::parse_u8_from_u8_buffer(&self.buffer[0..self.index]);
+							gga.numSV = Parser::parse_u8_from_u8_buffer(current_buffer);
 						},
 						// HDOP numeric
 						8 => {
-							gga.HDOP = Parser::parse_f64_from_u8_buffer(&self.buffer[0..self.index]);
+							gga.HDOP = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
 						// alt numeric
 						9 => {
-							gga.alt = Parser::parse_f64_from_u8_buffer(&self.buffer[0..self.index]);
+							gga.alt = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
 						// uAlt char
 						10 => {
@@ -392,7 +502,7 @@ impl Parser {
 						},
 						// sep numeric
 						11 => {
-							gga.sep = Parser::parse_f64_from_u8_buffer(&self.buffer[0..self.index]);
+							gga.sep = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
 						// uSep char
 						12 => {
@@ -400,15 +510,245 @@ impl Parser {
 						},
 						// diffAge numeric
 						13 => {
-							gga.diffAge = Some(Parser::parse_f64_from_u8_buffer(&self.buffer[0..self.index]));
+							gga.diffAge = Some(Parser::parse_f64_from_u8_buffer(current_buffer));
 						},
 						// diffStation numeric
 						14 => {
-							gga.diffStation = Some(Parser::parse_f64_from_u8_buffer(&self.buffer[0..self.index]));
+							gga.diffStation = Some(Parser::parse_f64_from_u8_buffer(current_buffer));
 						},
 						_ => {}
 					}
-				}
+				},
+				ParserResult::GLL(gll) => {
+					match self.value_index {
+						// lat "ddmm.mmmmm"
+						1 => {
+							if self.index >= 2 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(current_buffer);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(current_buffer);
+								gll.lat = degrees as f64 + minutes / 60.0;
+							}
+						},
+						// NS char
+						2 => {
+							gll.NS = self.buffer[0] as char;
+
+							if gll.NS == 'S' {
+								gll.lat = -gll.lat;
+							}
+						},
+						// long "dddmm.mmmmm"
+						3 => {
+							if self.index >= 3 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..3]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[3..self.index]);
+								gll.long = degrees as f64 + minutes / 60.0;
+							}
+						},
+						// EW char
+						4 => {
+							gll.EW = self.buffer[0] as char;
+
+							if gll.EW == 'W' {
+								gll.long = -gll.long;
+							}
+						},
+						// time "hhmmss.ss"
+						5 => {
+							if self.index >= 4 {
+								let hour: u16   = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
+								let minute: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[2..4]);
+								let second: f32 = Parser::parse_f32_from_u8_buffer(&self.buffer[4..self.index]);
+
+								gll.time = Time { hour, minute, second };
+							}
+						},
+						// status char
+						6 => {
+							gll.status = self.buffer[0] as char
+						},
+						// posMode char
+						7 => {
+							gll.posMode = self.buffer[0] as char
+						},
+						_ => {}
+					}
+				},
+				ParserResult::GSA(gsa) => {
+					match self.value_index {
+						1 => {
+							gsa.opMode = self.buffer[0] as char;
+						},
+						2 => {
+							gsa.navMode = match self.buffer[0] {
+								1 => NavMode::NotAvailable,
+								2 => NavMode::Fix2D,
+								3 => NavMode::Fix3D,
+								_ => NavMode::NotAvailable
+							};
+						},
+						3..15 => {
+							gsa.sv[self.value_index - 3] = Parser::parse_u8_from_u8_buffer(current_buffer);
+						},
+						15 => {
+							gsa.PDOP = Parser::parse_f64_from_u8_buffer(current_buffer)
+						},
+						16 => {
+							gsa.HDOP = Parser::parse_f64_from_u8_buffer(current_buffer)
+						},
+						17 => {
+							gsa.VDOP = Parser::parse_f64_from_u8_buffer(current_buffer)
+						},
+						18 => {
+							gsa.systemId = Parser::parse_u8_from_u8_buffer(current_buffer)
+						},
+						_ => {}
+					}
+				},
+				ParserResult::GSV(gsv) => {
+					match self.value_index {
+						1 => {
+							gsv.numMsg = Parser::parse_u8_from_u8_buffer(current_buffer);
+						},
+						2 => {
+							gsv.msgNum = Parser::parse_u8_from_u8_buffer(current_buffer);
+						},
+						3 => {
+							gsv.numSV = Parser::parse_u8_from_u8_buffer(current_buffer);
+						},
+						4..20 => {
+							let idx = (self.value_index -  4) / 4;
+							match (self.value_index - 4) % 4 {
+								0 => {
+									gsv.SV[idx] = Parser::parse_u8_from_u8_buffer(current_buffer);
+								},
+								1 => {
+									gsv.elv[idx] = Parser::parse_u8_from_u8_buffer(current_buffer);
+								},
+								2 => {
+									gsv.az[idx] = Parser::parse_u16_from_u8_buffer(current_buffer);
+								},
+								3 => {
+									gsv.cno[idx] = Parser::parse_u8_from_u8_buffer(current_buffer);
+								},
+								_ => { /* not possible, rust compiler! */ }
+							}
+						},
+						20 => {
+							gsv.signalId = Parser::parse_u8_from_u8_buffer(current_buffer);
+						},
+						_ => {}
+					}
+				},
+				ParserResult::RMC(rmc) => {
+					match self.value_index {
+						1 => {
+							if self.index >= 4 {
+								let hour: u16   = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
+								let minute: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[2..4]);
+								let second: f32 = Parser::parse_f32_from_u8_buffer(&self.buffer[4..self.index]);
+
+								rmc.time = Time { hour, minute, second };
+							}
+						},
+						2 => {
+							rmc.status = self.buffer[0] as char;
+						},
+						// lat "ddmm.mmmmm"
+						3 => {
+							if self.index >= 2 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[2..self.index]);
+								rmc.lat = degrees as f64 + minutes / 60.0;
+							}
+						},
+						// NS char
+						4 => {
+							rmc.NS = self.buffer[0] as char;
+
+							if rmc.NS == 'S' {
+								rmc.lat = -rmc.lat;
+							}
+						}
+						// long "dddmm.mmmmm"
+						5 => {
+							if self.index >= 3 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..3]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[3..self.index]);
+								rmc.long = degrees as f64 + minutes / 60.0;
+							}
+						},
+						// EW char
+						6 => {
+							rmc.EW = self.buffer[0] as char;
+
+							if rmc.EW == 'W' {
+								rmc.long = -rmc.long;
+							}
+						},
+						7 => {
+							rmc.spd = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						8 => {
+							rmc.cog = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						// date "ddmmyy"
+						9 => {
+							if self.index >= 4 {
+								let day: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+								let month: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
+								let year: u8  = Parser::parse_u8_from_u8_buffer(&self.buffer[4..6]);
+
+								rmc.date = Date { day, month, year };
+							}
+						},
+						10 => {
+							rmc.mv = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						11 => {
+							rmc.mvEW = self.buffer[0] as char;
+						},
+						12 => {
+							rmc.posMode = self.buffer[0] as char;
+						},
+						13 => {
+							rmc.navStatus = self.buffer[0] as char;
+						},
+						_ => {}
+					}
+				},
+				ParserResult::VTG(vtg) => {
+					match self.value_index {
+						1 => {
+							vtg.cogt = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						2 => {
+							vtg.T = self.buffer[0] as char;
+						},
+						3 => {
+							vtg.cogm = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						4 => {
+							vtg.M = self.buffer[0] as char;
+						},
+						5 => {
+							vtg.knots = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						6 => {
+							vtg.N = self.buffer[0] as char;
+						},
+						7 => {
+							vtg.kph = Parser::parse_f64_from_u8_buffer(current_buffer);
+						},
+						8 => {
+							vtg.K = self.buffer[0] as char;
+						},
+						9 => {
+							vtg.posMode = self.buffer[0] as char;
+						},
+						_ => {}
+					}
+				},
 				_ => {}
 			}
 		}
