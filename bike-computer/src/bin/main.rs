@@ -22,10 +22,7 @@ use embedded_graphics::{
 use esp_hal::{
 	clock::CpuClock,
 	gpio::{
-		Input,
-		InputConfig,
 		Level,
-		Pull,
 		Output,
 		OutputConfig
 	},
@@ -155,7 +152,6 @@ async fn main(spawner: Spawner) -> ! {
 										"GPS Fix: {:?} | Sats: {} | Lat: {:.5} | Long: {:.5} | Alt: {}m",
 										gga.quality, gga.numSV, gga.lat, gga.long, gga.alt
 									);
-									render(&mut display, &state);
 								},
 								nmea::ParserResult::RMC(rmc) => {
 									info!(
@@ -187,6 +183,8 @@ struct State {
 }
 
 fn render(display: &mut rlcd::Display, state: &State) {
+	display.ColourClear(rlcd::BinaryColour::Black);
+
 	let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
 
 	Text::new("My Bike Computer!", Point::new(10, 30), text_style)
