@@ -154,7 +154,7 @@ fn init_format(format: MessageType) -> Option<ParserResult> {
 			NS: '\0',
 			long: 0.0,
 			EW: '\0',
-			quality: Quality::StandardGPS,
+			quality: Quality::NoFix,
 			numSV: 0,
 			HDOP: 0.0,
 			alt: 0.0,
