@@ -10,6 +10,15 @@
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
+use embedded_graphics::{
+	mono_font::{
+		MonoTextStyle,
+		ascii::FONT_10X20
+	},
+	text::Text,
+	pixelcolor::BinaryColor,
+	prelude::*
+};
 use esp_hal::{
 	clock::CpuClock,
 	gpio::{
@@ -28,7 +37,8 @@ use esp_hal::{
 		Uart
 	}
 };
-use esp_radio::ble::controller::BleConnector;
+use esp_radio::{ble::controller::BleConnector, wifi::event::StaWpsErTimeout};
+use smoltcp::socket;
 use trouble_host::prelude::*;
 use log::info;
 
@@ -39,6 +49,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 extern crate alloc;
+
+use alloc::format;
 
 mod nmea;
 mod rlcd;
@@ -82,19 +94,15 @@ async fn main(spawner: Spawner) -> ! {
 
 	info!("Configuring Adafruit 4.2\" RLCD display on SPI2...");
 
-	let cs_pin   = peripherals.GPIO10;
-	let mosi_pin = peripherals.GPIO11;
-	let sclk_pin = peripherals.GPIO12;
-	let busy_pin = peripherals.GPIO13;
-	let dc_pin   = peripherals.GPIO14;
-	let rst_pin  = peripherals.GPIO15;
+	let dc_pin    = peripherals.GPIO5;
+	let sclk_pin = peripherals.GPIO11;
+	let mosi_pin = peripherals.GPIO12;
+	let cs_pin   = peripherals.GPIO40;
+	let rst_pin  = peripherals.GPIO41;
 
-	let cs_output = Output::new(cs_pin, Level::High, OutputConfig::default());
-	let dc_output = Output::new(dc_pin, Level::Low, OutputConfig::default());
-
+	let cs_output  = Output::new(cs_pin, Level::High, OutputConfig::default());
+	let dc_output  = Output::new(dc_pin, Level::Low, OutputConfig::default());
 	let rst_output = Output::new(rst_pin, Level::High, OutputConfig::default());
-
-	let busy_input = Input::new(busy_pin, InputConfig::default().with_pull(Pull::Up));
 
 	let spi_config = esp_hal::spi::master::Config::default()
 		.with_frequency(Rate::from_mhz(10))
@@ -105,7 +113,9 @@ async fn main(spawner: Spawner) -> ! {
 		.with_sck(sclk_pin)
 		.with_mosi(mosi_pin);
 
-	let mut display = rlcd::Display::new(spi, cs_output, dc_output, rst_output, busy_input);
+	let mut display = rlcd::Display::new(spi, cs_output, dc_output, rst_output);
+	display.init().await;
+	display.clear(BinaryColor::Off).unwrap();
 
 	info!("Configuring BN-880 GPS on UART1...");
 
@@ -118,6 +128,12 @@ async fn main(spawner: Spawner) -> ! {
 
 	let mut parser = nmea::Parser::new();
 	info!("GPS Parser Read. Entering async event loop...");
+
+	let mut state: State = State {
+		lat: 0.0,
+		long: 0.0,
+		speed: 0.0
+	};
 
 	let mut byte_buff: [u8; 1] = [0];
 
@@ -139,12 +155,17 @@ async fn main(spawner: Spawner) -> ! {
 										"GPS Fix: {:?} | Sats: {} | Lat: {:.5} | Long: {:.5} | Alt: {}m",
 										gga.quality, gga.numSV, gga.lat, gga.long, gga.alt
 									);
+									render(&mut display, &state);
 								},
 								nmea::ParserResult::RMC(rmc) => {
 									info!(
 										"Time: {:?} | Date: {:?} | Latitude: {:.5} | Longitude: {:.5} | Speed: {:.5}",
 										rmc.time, rmc.date, rmc.lat, rmc.long, rmc.spd
 									);
+									state.lat = rmc.lat;
+									state.long = rmc.long;
+									state.speed = rmc.spd;
+									render(&mut display, &state);
 								},
 								_ => {}
 							}
@@ -157,4 +178,30 @@ async fn main(spawner: Spawner) -> ! {
 			Err(_) => Timer::after(Duration::from_millis(5)).await
 		}
 	}
+}
+
+struct State {
+	lat: f64,
+	long: f64,
+	speed: f64
+}
+
+fn render(display: &mut rlcd::Display, state: &State) {
+	let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
+
+	Text::new("My Bike Computer!", Point::new(10, 30), text_style)
+		.draw(display)
+		.unwrap();
+
+	let position_text = format!("Current coordinats: {}, {}", state.lat, state.long);
+	Text::new(&position_text, Point::new(10, 60), text_style)
+		.draw(display)
+		.unwrap();
+
+	let speed_text = format!("Current speed: {}", state.speed);
+	Text::new(&speed_text, Point::new(10, 90), text_style)
+		.draw(display)
+		.unwrap();
+
+	display.Display();
 }
