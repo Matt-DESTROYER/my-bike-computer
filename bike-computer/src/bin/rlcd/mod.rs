@@ -171,7 +171,11 @@ impl<'d> Display<'d> {
 		// inlined send command to satisfy borrow checker
 		let _ = self.dc.set_high();
 		let _ = self.cs.set_low();
-		let _ = self.spi.write(&self.buffer);
+
+		for chunk in self.buffer.chunks(64) {
+			let _ = self.spi.write(chunk);
+		}
+
 		let _ = self.cs.set_high();
 	}
 
