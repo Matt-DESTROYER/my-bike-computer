@@ -61,7 +61,7 @@ pub struct GGA {
 	pub numSV: u8,               // number of satellites used
 	pub HDOP: f64,               // horizontal dilution of precision
 	pub alt: f64,                // altitude above mean sea level
-	pub uAlt: char,              // altutude units: meters (fixed field)
+	pub uAlt: char,              // altitude units: meters (fixed field)
 	pub sep: f64,                // geoid separation: difference between
 	pub uSep: char,              // separation units: meters (fixed field)
 	pub diffAge: Option<f64>,    // age of differential corrections (blank when DGPS is not used)
