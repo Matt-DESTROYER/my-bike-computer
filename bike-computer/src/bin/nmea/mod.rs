@@ -1,8 +1,7 @@
-#![no_std]
-
 // NMEA-0183
+// #![no_std] safe
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TalkerID {
 	GP, // GPS, SBAS, QZSS
 	GL, // GLONASS
@@ -11,7 +10,7 @@ pub enum TalkerID {
 	GN  // any combination of GNSS
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum MessageType {
 	Unknown,
 	GGA,
@@ -22,7 +21,7 @@ pub enum MessageType {
 	VTG
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Quality {
 	NoFix,
 	StandardGPS,
@@ -30,12 +29,14 @@ pub enum Quality {
 	EstimatedFix
 }
 
+#[derive(Debug)]
 pub struct Time {
 	hour: u16,
 	minute: u16,
 	second: f32
 }
 
+#[derive(Debug)]
 pub struct GGA {
 	pub time: Time,              // UTC time
 	pub lat: f64,                // latitude
@@ -53,16 +54,22 @@ pub struct GGA {
 	pub diffStation: Option<f64> // id of station providing differential corrections (blank when DGPS is not used)
 }
 
+#[derive(Debug)]
 pub struct GLL {}
 
+#[derive(Debug)]
 pub struct GSA {}
 
+#[derive(Debug)]
 pub struct GSV {}
 
+#[derive(Debug)]
 pub struct RMC {}
 
+#[derive(Debug)]
 pub struct VTG {}
 
+#[derive(Debug)]
 pub enum ParserResult {
 	GGA(GGA),
 	GLL(GLL),
@@ -86,20 +93,7 @@ fn check_format_equals(format: &[u8], cmp: &str) -> bool {
 	}
 	return true;
 }
-fn check_format_endswith(format: &[u8], cmp: &str) -> bool {
-	let cmp_bytes = cmp.as_bytes();
-	let iters = if cmp_bytes.len() > format.len() {
-		format.len()
-	} else {
-		cmp_bytes.len()
-	};
-	for i in 1..=iters {
-		if format[5 - i] != cmp_bytes[cmp_bytes.len() - i] {
-			return false;
-		}
-	}
-	return true;
-}
+
 fn init_format(format: MessageType) -> Option<ParserResult> {
 	match format {
 		MessageType::GGA => Some(ParserResult::GGA(GGA {
@@ -131,7 +125,7 @@ fn init_format(format: MessageType) -> Option<ParserResult> {
 	}
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum ParserState {
 	ParsingValue,
 	ParsingFormat,
@@ -139,6 +133,7 @@ enum ParserState {
 	Finishing
 }
 
+#[derive(Debug)]
 pub struct Parser {
 	state: ParserState,
 
@@ -173,7 +168,7 @@ impl Parser {
 	fn hex_to_dec(hex: &[u8]) -> usize {
 		let mut result: usize = 0;
 		for i in 0..hex.len() {
-			result = (result << 4) + match hex[hex.len() - i - 1] {
+			result = (result << 4) + match hex[i] {
 				b'0' => 0x0,
 				b'1' => 0x1,
 				b'2' => 0x2,
@@ -339,23 +334,35 @@ impl Parser {
 						},
 						// lat "ddmm.mmmmm"
 						2 => {
-							let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
-							let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[2..self.index]);
-							gga.lat = degrees as f64 + minutes / 60.0;
+							if self.index >= 2 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[2..self.index]);
+								gga.lat = degrees as f64 + minutes / 60.0;
+							}
 						},
 						// NS char
 						3 => {
 							gga.NS = self.buffer[0] as char;
+
+							if gga.NS == 'S' {
+								gga.lat = -gga.lat;
+							}
 						}
 						// long "dddmm.mmmmm"
 						4 => {
-							let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..3]);
-							let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[3..self.index]);
-							gga.long = degrees as f64 + minutes / 60.0;
+							if self.index >= 3 {
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..3]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[3..self.index]);
+								gga.long = degrees as f64 + minutes / 60.0;
+							}
 						},
 						// EW char
 						5 => {
 							gga.EW = self.buffer[0] as char;
+
+							if gga.EW == 'W' {
+								gga.long = -gga.long;
+							}
 						},
 						// quality digit
 						6 => {
@@ -408,7 +415,7 @@ impl Parser {
 	}
 
 	pub fn parse_byte(self: &mut Self, byte: u8) -> &Option<ParserResult> {
-		if self.state != ParserState::ParsingValue &&
+		if byte != b'*' &&
 				self.state != ParserState::CheckingChecksum &&
 				self.state != ParserState::Finishing {
 			self.checksum ^= byte;
@@ -421,34 +428,41 @@ impl Parser {
 						self.parse_value();
 						self.index = 0;
 						self.state = ParserState::ParsingValue;
+						return &self.result;
 					},
 					b'*' => {
 						self.parse_value();
 						self.index = 0;
 						self.state = ParserState::CheckingChecksum;
+						return &self.result;
 					},
 					b'$' => {
 						self.checksum = 0;
 						self.valid_checksum = false;
 						self.state = ParserState::ParsingFormat;
+						return &self.result;
 					},
-					b'\r' => self.state = ParserState::Finishing,
+					b'\r' => {
+						self.state = ParserState::Finishing;
+						return &self.result;
+					},
 					_ => {}
 				}
 			},
 			ParserState::ParsingFormat => {
 				if byte == b',' {
-					if check_format_endswith(&self.buffer[0..self.index], "GGA") {
+					let format_slice = &self.buffer[0..self.index];
+					if format_slice.ends_with(b"GGA") {
 						self.format = MessageType::GGA;
-					} else if check_format_endswith(&self.buffer[0..self.index], "GLL") {
+					} else if format_slice.ends_with(b"GLL") {
 						self.format = MessageType::GLL;
-					} else if check_format_endswith(&self.buffer[0..self.index], "GSA") {
+					} else if format_slice.ends_with(b"GSA") {
 						self.format = MessageType::GSA;
-					} else if check_format_endswith(&self.buffer[0..self.index], "GSV") {
+					} else if format_slice.ends_with(b"GSV") {
 						self.format = MessageType::GSV;
-					} else if check_format_endswith(&self.buffer[0..self.index], "RMC") {
+					} else if format_slice.ends_with(b"RMC") {
 						self.format = MessageType::RMC;
-					} else if check_format_endswith(&self.buffer[0..self.index], "VTG") {
+					} else if format_slice.ends_with(b"VTG") {
 						self.format = MessageType::VTG;
 					} else {
 						self.format = MessageType::Unknown;
@@ -469,8 +483,14 @@ impl Parser {
 					self.finished = true;
 					return &self.result;
 				}
-
-				// erm... how did we end up here.. smthn's wrong...
+				
+				self.finished = false;
+				self.state = ParserState::ParsingValue;
+				self.index = 0;
+				self.value_index = 0;
+				self.result = None;
+				self.parse_byte(byte);
+				return &self.result;
 			},
 		}
 
