@@ -693,15 +693,15 @@ impl Parser {
 							rmc.cog = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
 						// date "ddmmyy"
-					9 => {
-						if self.index >= 6 {
-							let day: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
-							let month: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
-							let year: u8  = Parser::parse_u8_from_u8_buffer(&self.buffer[4..6]);
+						9 => {
+							if self.index >= 6 {
+								let day: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+								let month: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
+								let year: u8  = Parser::parse_u8_from_u8_buffer(&self.buffer[4..6]);
 
-							rmc.date = Date { day, month, year };
-						}
-					},
+								rmc.date = Date { day, month, year };
+							}
+						},
 						10 => {
 							rmc.mv = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
@@ -779,6 +779,7 @@ impl Parser {
 					b'$' => {
 						self.checksum = 0;
 						self.valid_checksum = false;
+						self.index = 0;
 						self.state = ParserState::ParsingFormat;
 						return &self.result;
 					},
@@ -819,7 +820,7 @@ impl Parser {
 			},
 			ParserState::CheckingChecksum => {}
 			ParserState::Finishing => {
-				if byte == b'\n' {
+				if byte == b'\r' || byte == b'\n' {
 					self.finished = true;
 					return &self.result;
 				}
@@ -844,8 +845,9 @@ impl Parser {
 		if self.state == ParserState::CheckingChecksum && self.index > 1 {
 			let received_checksum: u8 = Parser::hex_to_dec(&self.buffer[0..2]) as u8;
 			self.valid_checksum = received_checksum == self.checksum;
-			self.state = ParserState::ParsingValue;
+			self.state = ParserState::Finishing;
 			self.index = 0;
+			self.value_index = 0;
 		}
 
 		return &self.result;
