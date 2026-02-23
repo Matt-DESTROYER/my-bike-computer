@@ -156,7 +156,7 @@ impl<'d> Display<'d> {
 		self.buffer.fill(colour);
 	}
 
-	pub fn Display(&mut self) {
+	pub fn flush(&mut self) {
 		// Column Address Set
 		self.write_command(0x2A);
 		self.write_data(&[0x12, 0x2A]);

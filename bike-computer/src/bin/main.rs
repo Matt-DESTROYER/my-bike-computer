@@ -113,6 +113,7 @@ async fn main(spawner: Spawner) -> ! {
 	let mut display = rlcd::Display::new(spi, cs_output, dc_output, rst_output);
 	display.init().await;
 	display.clear(BinaryColor::Off).unwrap();
+	display.flush();
 
 	info!("Configuring BN-880 GPS on UART1...");
 
@@ -201,5 +202,5 @@ fn render(display: &mut rlcd::Display, state: &State) {
 		.draw(display)
 		.unwrap();
 
-	display.Display();
+	display.flush();
 }
