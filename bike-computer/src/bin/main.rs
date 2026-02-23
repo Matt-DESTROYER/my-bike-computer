@@ -13,16 +13,16 @@ use embassy_time::{Duration, Timer};
 use esp_hal::{
 	clock::CpuClock,
 	gpio::{
+		Input,
+		InputConfig,
 		Level,
+		Pull,
 		Output,
 		OutputConfig
 	},
 	time::Rate,
 	timer::timg::TimerGroup,
-	spi::{
-		master::Spi,
-		Mode
-	},
+	spi::Mode,
 	uart::{
 		Config,
 		Uart
@@ -31,17 +31,6 @@ use esp_hal::{
 use esp_radio::ble::controller::BleConnector;
 use trouble_host::prelude::*;
 use log::info;
-
-//use sharp_memory_display::SharpMemoryDisplay;
-use embedded_graphics::{
-	mono_font::{
-		ascii::FONT_10X20,
-		MonoTextStyle
-	},
-	pixelcolor::BinaryColor,
-	prelude::*,
-	text::Text
-};
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
@@ -52,6 +41,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 extern crate alloc;
 
 mod nmea;
+mod rlcd;
 
 const CONNECTIONS_MAX: usize = 1;
 const L2CAP_CHANNELS_MAX: usize = 1;
@@ -92,31 +82,30 @@ async fn main(spawner: Spawner) -> ! {
 
 	info!("Configuring Adafruit 4.2\" RLCD display on SPI2...");
 
-	let cs   = peripherals.GPIO10;
-	let mosi = peripherals.GPIO11;
-	let sclk = peripherals.GPIO12;
-	let busy = peripherals.GPIO13;
-	let dc   = peripherals.GPIO14;
-	let rst  = peripherals.GPIO15;
+	let cs_pin   = peripherals.GPIO10;
+	let mosi_pin = peripherals.GPIO11;
+	let sclk_pin = peripherals.GPIO12;
+	let busy_pin = peripherals.GPIO13;
+	let dc_pin   = peripherals.GPIO14;
+	let rst_pin  = peripherals.GPIO15;
+
+	let cs_output = Output::new(cs_pin, Level::High, OutputConfig::default());
+	let dc_output = Output::new(dc_pin, Level::Low, OutputConfig::default());
+
+	let rst_output = Output::new(rst_pin, Level::High, OutputConfig::default());
+
+	let busy_input = Input::new(busy_pin, InputConfig::default().with_pull(Pull::Up));
 
 	let spi_config = esp_hal::spi::master::Config::default()
-		.with_frequency(Rate::from_mhz(1))
+		.with_frequency(Rate::from_mhz(10))
 		.with_mode(Mode::_0);
 
-	/*
 	let spi = esp_hal::spi::master::Spi::new(peripherals.SPI2, spi_config)
 		.unwrap()
-		.with_sck(sclk)
-		.with_mosi(mosi);*/
+		.with_sck(sclk_pin)
+		.with_mosi(mosi_pin);
 
-	let cs_output = Output::new(cs, Level::Low, OutputConfig::default());
-	//let mut display = SharpMemoryDisplay::new(spi, cs_output, 400, 300);
-
-	//display.enable();
-	//display.clear(BinaryColor::Off);
-	//display.flush().unwrap();
-
-	//info!("Display initialised and cleared!");
+	let mut display = rlcd::Display::new(spi, cs_output, dc_output, rst_output, busy_input);
 
 	info!("Configuring BN-880 GPS on UART1...");
 
