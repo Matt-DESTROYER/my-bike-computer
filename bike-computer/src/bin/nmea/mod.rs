@@ -579,14 +579,14 @@ impl Parser {
 						1 => {
 							gsa.opMode = self.buffer[0] as char;
 						},
-						2 => {
-							gsa.navMode = match self.buffer[0] {
-								1 => NavMode::NotAvailable,
-								2 => NavMode::Fix2D,
-								3 => NavMode::Fix3D,
-								_ => NavMode::NotAvailable
-							};
-						},
+					2 => {
+						gsa.navMode = match self.buffer[0] {
+							b'1' => NavMode::NotAvailable,
+							b'2' => NavMode::Fix2D,
+							b'3' => NavMode::Fix3D,
+							_ => NavMode::NotAvailable
+						};
+					},
 						3..15 => {
 							gsa.sv[self.value_index - 3] = Parser::parse_u8_from_u8_buffer(current_buffer);
 						},
