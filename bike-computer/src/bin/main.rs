@@ -192,12 +192,12 @@ fn render(display: &mut rlcd::Display, state: &State) {
 		.draw(display)
 		.unwrap();
 
-	let position_text = format!("Current coordinates: {}, {}", state.lat, state.long);
+	let position_text = format!("Current coordinates: {:.4}, {:.4}", state.lat, state.long);
 	Text::new(&position_text, Point::new(10, 60), text_style)
 		.draw(display)
 		.unwrap();
 
-	let speed_text = format!("Current speed: {}", state.speed);
+	let speed_text = format!("Current speed: {:.2}", state.speed);
 	Text::new(&speed_text, Point::new(10, 90), text_style)
 		.draw(display)
 		.unwrap();
