@@ -693,15 +693,15 @@ impl Parser {
 							rmc.cog = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
 						// date "ddmmyy"
-						9 => {
-							if self.index >= 4 {
-								let day: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
-								let month: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
-								let year: u8  = Parser::parse_u8_from_u8_buffer(&self.buffer[4..6]);
+					9 => {
+						if self.index >= 6 {
+							let day: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+							let month: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
+							let year: u8  = Parser::parse_u8_from_u8_buffer(&self.buffer[4..6]);
 
-								rmc.date = Date { day, month, year };
-							}
-						},
+							rmc.date = Date { day, month, year };
+						}
+					},
 						10 => {
 							rmc.mv = Parser::parse_f64_from_u8_buffer(current_buffer);
 						},
