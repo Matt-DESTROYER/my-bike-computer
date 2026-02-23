@@ -67,6 +67,9 @@ impl<'d> Display<'d> {
 	}
 
 	pub async fn init(&mut self) {
+		// wait for LCD's power circuitry to stabilise on a cold battery boot
+		Timer::after(Duration::from_millis(500)).await;
+
 		self.Reset().await;
 
 		// NVM Load Control
@@ -188,10 +191,6 @@ impl<'d> Display<'d> {
 
 		let _ = self.rst.set_high();
 		Timer::after(Duration::from_millis(50)).await;
-	}
-
-	pub fn SetPixel(x: u16, y: u16, colour: u8) {
-		//u32 idx = ;
 	}
 }
 
