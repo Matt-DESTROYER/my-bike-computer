@@ -1,10 +1,7 @@
 // #![no_std] safe
 
 use esp_hal::{
-	gpio::{
-		Output,
-		Input
-	},
+	gpio::Output,
 	spi::master::Spi,
 	Blocking
 };
