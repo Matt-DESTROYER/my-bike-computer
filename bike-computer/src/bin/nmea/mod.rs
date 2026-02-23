@@ -524,8 +524,8 @@ impl Parser {
 						// lat "ddmm.mmmmm"
 						1 => {
 							if self.index >= 2 {
-								let degrees: u16 = Parser::parse_u16_from_u8_buffer(current_buffer);
-								let minutes: f64 = Parser::parse_f64_from_u8_buffer(current_buffer);
+								let degrees: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
+								let minutes: f64 = Parser::parse_f64_from_u8_buffer(&self.buffer[2..self.index]);
 								gll.lat = degrees as f64 + minutes / 60.0;
 							}
 						},
