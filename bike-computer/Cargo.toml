@@ -1,7 +1,7 @@
 [package]
 edition      = "2024"
 name         = "bike-computer"
-rust-version = "1.88"
+rust-version = "1.92"
 version      = "0.1.0"
 
 [[bin]]
@@ -61,6 +61,7 @@ static_cell      = "2.1.1"
 log = "0.4.29"
 esp-println = { version = "0.16.1", features = ["esp32s3", "log-04"] }
 embedded-graphics = "0.8.2"
+embedded-graphics-core = "0.4.1"
 
 [profile.dev]
 # Rust debug is too slow.
