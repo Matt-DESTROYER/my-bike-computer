@@ -9,6 +9,7 @@ To build this project for ESP chips, you will need the following setup:
 ```sh
 cargo install espup --locked
 espup install
+cargo install espflash --locked
 ```
 > Note: this will probably take a little while.
 
@@ -21,6 +22,9 @@ If you want to flash a specific file:
 ```sh
 espflash flash file-name --monitor
 ```
+
+## To enable logs
+Set the `ESP_LOG` environment variable to `"info"`.
 
 ### To generate your own project:
 ```sh
