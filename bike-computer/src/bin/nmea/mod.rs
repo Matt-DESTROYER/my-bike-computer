@@ -38,16 +38,16 @@ pub enum NavMode {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Time {
-	hour: u16,
-	minute: u16,
-	second: f32
+	pub hour: u16,
+	pub minute: u16,
+	pub second: f32
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Date {
-	day: u8,
-	month: u8,
-	year: u8
+	pub day: u8,
+	pub month: u8,
+	pub year: u8
 }
 
 #[derive(Debug)]
