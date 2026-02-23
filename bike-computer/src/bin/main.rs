@@ -193,7 +193,7 @@ fn render(display: &mut rlcd::Display, state: &State) {
 		.draw(display)
 		.unwrap();
 
-	let position_text = format!("Current coordinats: {}, {}", state.lat, state.long);
+	let position_text = format!("Current coordinates: {}, {}", state.lat, state.long);
 	Text::new(&position_text, Point::new(10, 60), text_style)
 		.draw(display)
 		.unwrap();
