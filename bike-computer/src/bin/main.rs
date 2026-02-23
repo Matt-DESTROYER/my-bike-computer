@@ -151,6 +151,12 @@ async fn main(spawner: Spawner) -> ! {
 										gga.quality, gga.numSV, gga.lat, gga.long, gga.alt
 									);
 								},
+								nmea::ParserResult::RMC(rmc) => {
+									info!(
+										"Time: {:?} | Date: {:?} | Latitude: {:.5} | Longitude: {:.5} | Speed: {:.5}",
+										rmc.time, rmc.date, rmc.lat, rmc.long, rmc.spd
+									);
+								},
 								_ => {}
 							}
 						}
