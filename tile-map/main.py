@@ -75,6 +75,10 @@ def process_and_save_tile(z: int, x: int, y: int) -> bool:
 			lut: list[int] = [255 if p > THRESHOLD else 0 for p in range(256)]
 			img_binary = img_gray.point(lut, '1')
 
+			extrema = img_binary.getextrema()
+			if extrema[0] == extrema[1]:
+				return True
+
 			makedirs(bin_path, exist_ok=True)
 			with open(file_path, "wb") as file:
 				file.write(img_binary.tobytes())
