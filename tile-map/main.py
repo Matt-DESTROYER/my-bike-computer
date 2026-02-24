@@ -137,17 +137,21 @@ def main():
 	tasks = [(ZOOM, x, y) for x in range(x_start, x_end + 1) for y in range(y_start, y_end + 1)]
 
 	print(f"Spinning up {MAX_WORKERS} concurrent workers...")
-	success_count = 0
+
+	success_count: int = 0
+	processed_count: int = 0
 
 	with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 		futures = { executor.submit(process_and_save_tile, z, x, y): (z, x, y) for (z, x, y) in tasks }
 
 		for future in as_completed(futures):
+			processed_count += 1
+
 			if future.result():
 				success_count += 1
 			
-			if success_count % 1000 == 0:
-				print(f"Progress: {success_count}/{total_files} tiles saved.")
+			if processed_count % 1000 == 0:
+				print(f"Progress: {processed_count}/{total_files} tiles processed ({success_count} saved).")
 
 	print("\nBatch complete! If any files failed, just run again! (Skips existing files)")
 
