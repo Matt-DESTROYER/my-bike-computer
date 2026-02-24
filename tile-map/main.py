@@ -55,6 +55,10 @@ def calculate_bounding_box(lat: float, lon: float, radius_km: float) -> tuple[fl
 
 
 def deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
+	# Web Mercator safe range
+	lat = max(min(lat, 85.05112878), -85.05112878)
+	lon = ((lon + 180.0) % 360.0) - 180.0
+
 	lat_rad: float = radians(lat)
 	n: int = 2 ** zoom
 
