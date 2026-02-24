@@ -4,6 +4,7 @@ from PIL import Image
 from io import BytesIO
 from os import makedirs, path
 import time
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
 
@@ -26,8 +27,16 @@ MAP_URLS: list[str] = [
 OUTPUT_DIR: str = "map_tiles_bin"
 MAX_WORKERS: int = 16
 
-session = requests.Session()
-session.headers.update({ "User-Agent": "RustBikeComputerProject" })
+_thread_local = threading.local()
+
+
+def get_session() -> requests.Session:
+	session = getattr(_thread_local, "session", None)
+	if session is None:
+		session = requests.Session()
+		session.headers.update({ "User-Agent": "RustBikeComputerProject" })
+		_thread_local.session = session
+	return session
 
 
 def calculate_bounding_box(lat: float, lon: float, radius_km: float) -> tuple[float, float, float, float]:
@@ -65,7 +74,7 @@ def process_and_save_tile(z: int, x: int, y: int) -> bool:
 	url = random.choice(MAP_URLS).format(z=z, x=x, y=y)
 
 	try:
-		response = session.get(url, timeout=10)
+		response = get_session().get(url, timeout=10)
 
 		if response.status_code == 200:
 			img = Image.open(BytesIO(response.content))
