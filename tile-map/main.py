@@ -114,7 +114,7 @@ def confirm(text: str) -> bool:
 
 
 def main():
-	print(f"Calculation bounding box for {RADIUS_KM} km radius around {CENTER_LAT}, {CENTER_LON}...")
+	print(f"Calculating bounding box for {RADIUS_KM} km radius around {CENTER_LAT}, {CENTER_LON}...")
 
 	lat_max, lat_min, lon_max, lon_min = calculate_bounding_box(CENTER_LAT, CENTER_LON, RADIUS_KM)
 
@@ -128,7 +128,7 @@ def main():
 
 	print(f"Grid size: {x_end - x_start + 1} x {y_end - y_start + 1} tiles")
 	print(f"Total files to download: {total_files}")
-	print(f"Estimated storage required: {total_mb:.2f} mb")
+	print(f"Estimated storage required: {total_mb:.2f} MB")
 
 	if not confirm("Would you like to proceed? "):
 		print("Aborting")
