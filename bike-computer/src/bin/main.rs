@@ -171,26 +171,22 @@ async fn main(spawner: Spawner) -> ! {
 
 				parser.parse_byte(byte_buff[0]);
 
-				if parser.finished {
-					if parser.valid_checksum {
-						if let Some(ref result) = parser.result {
-							match result {
-								nmea::ParserResult::RMC(rmc) => {
-									let latest_temp = temp_rx.try_get().unwrap_or(0.0);
-									let mut time = rmc.time;
-									// AEST = UTC+11
-									time.hour += 11;
-									if time.hour > 24 {
-										time.hour -= 24;
-									}
-									app.update_state(rmc.lat as f32, rmc.long as f32, rmc.spd as f32 * 1.852, latest_temp, time);
-									app.render();
-								},
-								_ => {}
-							}
+				if parser.finished && parser.valid_checksum {
+					if let Some(ref result) = parser.result {
+						match result {
+							nmea::ParserResult::RMC(rmc) => {
+								let latest_temp = temp_rx.try_get().unwrap_or(0.0);
+								let mut time = rmc.time;
+								// AEST = UTC+11
+								time.hour += 11;
+								if time.hour > 24 {
+									time.hour -= 24;
+								}
+								app.update_state(rmc.lat as f32, rmc.long as f32, rmc.spd as f32 * 1.852, latest_temp, time);
+								app.render();
+							},
+							_ => {}
 						}
-					} else {
-						info!("WARNING: Corrupted NMEA sentence dropped!");
 					}
 				}
 			},
