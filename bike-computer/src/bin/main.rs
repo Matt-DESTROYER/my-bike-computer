@@ -72,7 +72,7 @@ async fn main(spawner: Spawner) -> ! {
 	esp_alloc::heap_allocator!(size: 64 * 1024);
 
 	// initialise the 8 MB PSRAM
-	esp_alloc::psram_allocator!(&peripherals.PSRAM, esp_hal::psram);
+	//esp_alloc::psram_allocator!(&peripherals.PSRAM, esp_hal::psram);
 
 	let timg0 = TimerGroup::new(peripherals.TIMG0);
 	esp_rtos::start(timg0.timer0);
@@ -114,12 +114,12 @@ async fn main(spawner: Spawner) -> ! {
 	//let pa_ctrl    = peripherals.GPIO46;
 
 	// RLCD
-	let rlcd_ds     = peripherals.GPIO5;
-	//let rlcd_te     = peripherals.GPIO6;
-	let rlcd_sclk  = peripherals.GPIO11;
-	let rlcd_din   = peripherals.GPIO12;
-	let rlcd_cs    = peripherals.GPIO40;
-	let rlcd_rst   = peripherals.GPIO41;
+	let rlcd_ds   = peripherals.GPIO5;
+	//let rlcd_te = peripherals.GPIO6;
+	let rlcd_sclk = peripherals.GPIO11;
+	let rlcd_din  = peripherals.GPIO12;
+	let rlcd_cs   = peripherals.GPIO40;
+	let rlcd_rst  = peripherals.GPIO41;
 
 	// configure RLCD display
 	let cs_output  = Output::new(rlcd_cs, Level::High, OutputConfig::default());
