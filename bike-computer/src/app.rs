@@ -47,7 +47,7 @@ impl<'a> App<'a> {
 		self.display.flush();
 	}
 
-	pub fn update_gps(&mut self, lat: f64, long: f64, speed: f64, temp: f32) {
+	pub fn update_state(&mut self, lat: f64, long: f64, speed: f64, temp: f32) {
 		self.state.lat = lat;
 		self.state.long = long;
 		self.state.speed = speed;
