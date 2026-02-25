@@ -12,6 +12,7 @@ use embedded_graphics_core::{
 	prelude::*
 };
 
+#[allow(non_snake_case, non_upper_case_globals)]
 pub mod BinaryColour {
 	pub const Black: u8 = 0x00;
 	pub const White: u8 = 0xFF;
@@ -67,7 +68,7 @@ impl<'d> Display<'d> {
 		// wait for LCD's power circuitry to stabilise on a cold battery boot
 		Timer::after(Duration::from_millis(500)).await;
 
-		self.Reset().await;
+		self.reset().await;
 
 		// NVM Load Control
 		self.write_command(0xD6);
@@ -149,10 +150,10 @@ impl<'d> Display<'d> {
 		self.write_command(0x38);
 		self.write_command(0x29);
 
-		self.ColourClear(BinaryColour::White);
+		self.colour_clear(BinaryColour::White);
 	}
 
-	pub fn ColourClear(&mut self, colour: u8) {
+	pub fn colour_clear(&mut self, colour: u8) {
 		self.buffer.fill(colour);
 	}
 
@@ -179,7 +180,7 @@ impl<'d> Display<'d> {
 		let _ = self.cs.set_high();
 	}
 
-	pub async fn Reset(&mut self) {
+	pub async fn reset(&mut self) {
 		let _ = self.rst.set_high();
 		Timer::after(Duration::from_millis(50)).await;
 
