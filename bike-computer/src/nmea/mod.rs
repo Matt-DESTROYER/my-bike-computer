@@ -38,8 +38,8 @@ pub enum NavMode {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Time {
-	pub hour: u16,
-	pub minute: u16,
+	pub hour: u8,
+	pub minute: u8,
 	pub second: f32
 }
 
@@ -426,8 +426,8 @@ impl Parser {
 						// time "hhmmss.ss"
 						1 => {
 							if self.index >= 4 {
-								let hour: u16   = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
-								let minute: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[2..4]);
+								let hour: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+								let minute: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
 								let second: f32 = Parser::parse_f32_from_u8_buffer(&self.buffer[4..self.index]);
 
 								gga.time = Time { hour, minute, second };
@@ -547,8 +547,8 @@ impl Parser {
 						// time "hhmmss.ss"
 						5 => {
 							if self.index >= 4 {
-								let hour: u16   = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
-								let minute: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[2..4]);
+								let hour: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+								let minute: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
 								let second: f32 = Parser::parse_f32_from_u8_buffer(&self.buffer[4..self.index]);
 
 								gll.time = Time { hour, minute, second };
@@ -635,8 +635,8 @@ impl Parser {
 					match self.value_index {
 						1 => {
 							if self.index >= 4 {
-								let hour: u16   = Parser::parse_u16_from_u8_buffer(&self.buffer[0..2]);
-								let minute: u16 = Parser::parse_u16_from_u8_buffer(&self.buffer[2..4]);
+								let hour: u8   = Parser::parse_u8_from_u8_buffer(&self.buffer[0..2]);
+								let minute: u8 = Parser::parse_u8_from_u8_buffer(&self.buffer[2..4]);
 								let second: f32 = Parser::parse_f32_from_u8_buffer(&self.buffer[4..self.index]);
 
 								rmc.time = Time { hour, minute, second };
