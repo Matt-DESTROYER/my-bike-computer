@@ -177,7 +177,7 @@ async fn main(spawner: Spawner) -> ! {
 							match result {
 								nmea::ParserResult::RMC(rmc) => {
 									let latest_temp = temp_rx.try_get().unwrap_or(0.0);
-									app.update_state(rmc.lat, rmc.long, rmc.spd * 1.852, latest_temp);
+									app.update_state(rmc.lat as f32, rmc.long as f32, rmc.spd as f32 * 1.852, latest_temp);
 									app.render();
 								},
 								_ => {}

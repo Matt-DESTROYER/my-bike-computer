@@ -53,6 +53,7 @@ dependencies = [
  "esp-radio",
  "esp-rtos",
  "log",
+ "micromath",
  "shtcx",
  "smoltcp",
  "static_cell",

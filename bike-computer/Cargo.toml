@@ -64,6 +64,7 @@ embedded-graphics = "0.8.2"
 embedded-graphics-core = "0.4.1"
 shtcx = "1.0.0"
 embassy-sync = "0.7.2"
+micromath = "2.1.0"
 
 [profile.dev]
 # Rust debug is too slow.
