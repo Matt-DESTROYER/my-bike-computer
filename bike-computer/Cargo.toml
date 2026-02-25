@@ -9,7 +9,7 @@ name = "bike-computer"
 path = "./src/bin/main.rs"
 
 [dependencies]
-esp-hal = { version = "~1.0", features = ["esp32s3", "unstable"] }
+esp-hal = { version = "~1.0", features = ["esp32s3", "psram", "unstable"] }
 
 esp-rtos = { version = "0.2.0", features = [
   "embassy",

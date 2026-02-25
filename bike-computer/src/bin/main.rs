@@ -63,12 +63,16 @@ async fn main(spawner: Spawner) -> ! {
 	esp_println::logger::init_logger_from_env();
 	info!("Board is alive!");
 
-	let config = Config::default().with_cpu_clock(CpuClock::max());
+	let config = Config::default()
+		.with_cpu_clock(CpuClock::max());
 	let peripherals = esp_hal::init(config);
 
 	esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
 	// COEX needs more RAM - so we've added some more
 	esp_alloc::heap_allocator!(size: 64 * 1024);
+
+	// initialise the 8 MB PSRAM
+	esp_alloc::psram_allocator!(&peripherals.PSRAM, esp_hal::psram);
 
 	let timg0 = TimerGroup::new(peripherals.TIMG0);
 	esp_rtos::start(timg0.timer0);

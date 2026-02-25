@@ -201,4 +201,3 @@ impl<'a> App<'a> {
 fn lerp(val: f32, min: f32, max: f32) -> f32 {
 	val * (max - min) + min
 }
-
