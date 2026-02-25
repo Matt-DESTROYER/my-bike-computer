@@ -151,9 +151,13 @@ def main():
 				success_count += 1
 			
 			if processed_count % 1000 == 0:
-				print(f"Progress: {processed_count}/{total_files} tiles processed ({success_count} saved).")
+				processed_percent: float = processed_count / total_files * 100.0
+				saved_percent : float = saved_percent / processed_count * 100.0
+				print(f"{processed_percent:.2f}% tiles processed ({saved_percent:.2f}% of processed tiles saved)")
 
-	print("\nBatch complete! If any files failed, just run again! (Skips existing files)")
+	print()
+	print(f"{success_count}/{total_files} tiles saved successfully")
+	print("Batch complete! If any files failed, just run again! (Skips existing files)")
 
 
 if __name__ == "__main__":
