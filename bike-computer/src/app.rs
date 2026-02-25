@@ -106,6 +106,10 @@ impl<'a> App<'a> {
 			.stroke_width(4)
 			.build();
 
+		let fill = PrimitiveStyleBuilder::new()
+			.fill_color(BinaryColor::On)
+			.build();
+
 		// speedometer
 		let speedo_x = HALF_WIDTH;
 		let speed_y = HALF_HEIGHT + 10;
@@ -184,13 +188,35 @@ impl<'a> App<'a> {
 			.draw(&mut self.display)
 			.unwrap();
 
+		// time
 		let time_text = format!("{:02}:{:02}:{:02}", self.state.time.hour, self.state.time.minute, self.state.time.second as u8);
 		Text::new(&time_text, Point::new(5, 20), large_text_style)
 			.draw(&mut self.display)
 			.unwrap();
 
+		// temperature
+		let thermometer_x = WIDTH - 20;
+		let thermometer_y = 5;
+		Line::new(Point::new(thermometer_x, thermometer_y), Point::new(thermometer_x, thermometer_y + 12))
+			.into_styled(thick_stroke)
+			.draw(&mut self.display)
+			.unwrap();
+
+		Circle::with_center(Point::new(thermometer_x, thermometer_y + 14), 8)
+			.into_styled(fill)
+			.draw(&mut self.display)
+			.unwrap();
+
+		for i in 0..3 {
+			let tick_y = thermometer_y + 2 + (i * 4);
+			Line::new(Point::new(thermometer_x + 3, tick_y), Point::new(thermometer_x + 5, tick_y))
+				.into_styled(thin_stroke)
+				.draw(&mut self.display)
+				.unwrap();
+		}
+
 		let temp_text = format!("{:.1}°C", self.state.temp);
-		Text::with_alignment(&temp_text, Point::new(WIDTH - 5, 20), large_text_style, Alignment::Right)
+		Text::with_alignment(&temp_text, Point::new(WIDTH - 30, 20), large_text_style, Alignment::Right)
 			.draw(&mut self.display)
 			.unwrap();
 
