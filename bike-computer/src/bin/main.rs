@@ -72,7 +72,15 @@ async fn main(spawner: Spawner) -> ! {
 	esp_alloc::heap_allocator!(size: 64 * 1024);
 
 	// initialise the 8 MB PSRAM
-	//esp_alloc::psram_allocator!(&peripherals.PSRAM, esp_hal::psram);
+	let psram_start = 0x3C00_0000 as *mut u8;
+	let psram_size = 8 * 1024 * 1024;
+	unsafe {
+		esp_alloc::HEAP.add_region(esp_alloc::HeapRegion::new(
+			psram_start,
+			psram_size,
+			esp_alloc::MemoryCapability::External.into()
+		));
+	}
 
 	let timg0 = TimerGroup::new(peripherals.TIMG0);
 	esp_rtos::start(timg0.timer0);
