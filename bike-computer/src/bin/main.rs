@@ -9,33 +9,33 @@
 
 use bt_hci::controller::ExternalController;
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
-use embedded_graphics::{
-	mono_font::{
-		MonoTextStyle,
-		ascii::FONT_10X20
-	},
-	text::Text,
-	pixelcolor::BinaryColor,
-	prelude::*
+use embassy_time::{Delay, Duration, Ticker, Timer};
+use embassy_sync::{
+	blocking_mutex::raw::CriticalSectionRawMutex,
+	watch::Watch
 };
 use esp_hal::{
-	clock::CpuClock,
-	gpio::{
+	Blocking, Config, clock::CpuClock, gpio::{
 		Level,
 		Output,
 		OutputConfig
 	},
-	time::Rate,
-	timer::timg::TimerGroup,
-	spi::Mode,
-	uart::{
-		Config,
+	i2c::master::{
+		Config as I2cConfig,
+		I2c
+	},
+	spi::Mode, time::Rate, timer::timg::TimerGroup, uart::{
+		Config as UartConfig,
 		Uart
 	}
 };
-use esp_radio::{ble::controller::BleConnector, wifi::event::StaWpsErTimeout};
-use smoltcp::socket;
+use shtcx::{
+	PowerMode,
+	ShtC3,
+	shtc3
+};
+use esp_radio::{ble::controller::BleConnector, /*wifi::event::StaWpsErTimeout*/};
+//use smoltcp::socket;
 use trouble_host::prelude::*;
 use log::info;
 
@@ -45,12 +45,9 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 	loop {}
 }
 
-extern crate alloc;
-
-use alloc::format;
-
-mod nmea;
-mod rlcd;
+use bike_computer::nmea;
+use bike_computer::rlcd;
+use bike_computer::app::App;
 
 const CONNECTIONS_MAX: usize = 1;
 const L2CAP_CHANNELS_MAX: usize = 1;
@@ -66,7 +63,7 @@ async fn main(spawner: Spawner) -> ! {
 	esp_println::logger::init_logger_from_env();
 	info!("Board is alive!");
 
-	let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
+	let config = Config::default().with_cpu_clock(CpuClock::max());
 	let peripherals = esp_hal::init(config);
 
 	esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 73744);
@@ -91,51 +88,81 @@ async fn main(spawner: Spawner) -> ! {
 
 	info!("Configuring Adafruit 4.2\" RLCD display on SPI2...");
 
-	let dc_pin    = peripherals.GPIO5;
-	let sclk_pin = peripherals.GPIO11;
-	let mosi_pin = peripherals.GPIO12;
-	let cs_pin   = peripherals.GPIO40;
-	let rst_pin  = peripherals.GPIO41;
+	// I2C
+	let i2c_sda = peripherals.GPIO13;
+	let i2c_scl = peripherals.GPIO14;
 
-	let cs_output  = Output::new(cs_pin, Level::High, OutputConfig::default());
-	let dc_output  = Output::new(dc_pin, Level::Low, OutputConfig::default());
-	let rst_output = Output::new(rst_pin, Level::High, OutputConfig::default());
+	// TF Card
+	//let sdmmc_cmd  = peripherals.GPIO21;
+	//let sdmmc_clk  = peripherals.GPIO38;
+	//let sdmmc_data = peripherals.GPIO39;
+	//let sd_cd      = peripherals.GPIO17;
 
-	let spi_config = esp_hal::spi::master::Config::default()
+	// PCF85063
+	//let rtc_int = peripherals.GPIO15;
+
+	// ES8311 + ES7210
+	//let i2s_dsdin  = peripherals.GPIO8;
+	//let i2s_sclk   = peripherals.GPIO9;
+	//let i2s_asout  = peripherals.GPIO10;
+	//let i2s_mclk   = peripherals.GPIO16;
+	//let i2s_lrck   = peripherals.GPIO45;
+	//let pa_ctrl    = peripherals.GPIO46;
+
+	// RLCD
+	let rlcd_ds     = peripherals.GPIO5;
+	//let rlcd_te     = peripherals.GPIO6;
+	let rlcd_sclk  = peripherals.GPIO11;
+	let rlcd_din   = peripherals.GPIO12;
+	let rlcd_cs    = peripherals.GPIO40;
+	let rlcd_rst   = peripherals.GPIO41;
+
+	// configure RLCD display
+	let cs_output  = Output::new(rlcd_cs, Level::High, OutputConfig::default());
+	let dc_output  = Output::new(rlcd_ds, Level::Low, OutputConfig::default());
+	let rst_output = Output::new(rlcd_rst, Level::High, OutputConfig::default());
+
+	let rlcd_spi_config = esp_hal::spi::master::Config::default()
 		.with_frequency(Rate::from_mhz(10))
 		.with_mode(Mode::_0);
 
-	let spi = esp_hal::spi::master::Spi::new(peripherals.SPI2, spi_config)
+	let rlcd_spi = esp_hal::spi::master::Spi::new(peripherals.SPI2, rlcd_spi_config)
 		.unwrap()
-		.with_sck(sclk_pin)
-		.with_mosi(mosi_pin);
+		.with_sck(rlcd_sclk)
+		.with_mosi(rlcd_din);
 
-	let mut display = rlcd::Display::new(spi, cs_output, dc_output, rst_output);
-	display.init().await;
-	display.clear(BinaryColor::Off).unwrap();
-	display.flush();
+	let display = rlcd::Display::new(rlcd_spi, cs_output, dc_output, rst_output);
 
-	info!("Configuring BN-880 GPS on UART1...");
+	// configure SHTC3
+	let i2c_config = I2cConfig::default()
+		.with_frequency(Rate::from_khz(100));
+	let i2c_bus = I2c::new(peripherals.I2C0, i2c_config)
+		.unwrap()
+		.with_sda(i2c_sda)
+		.with_scl(i2c_scl);
 
-	let uart_config = Config::default().with_baudrate(9600);
+	let shtc3_sensor = shtc3(i2c_bus);
+	spawner.spawn(temperature_worker(shtc3_sensor)).unwrap();
+	let mut temp_rx = TEMPERATURE_WATCHER.receiver().unwrap();
+
+	// configure GPS
+	let uart_config = UartConfig::default().with_baudrate(9600);
 	let mut gps_uart = Uart::new(peripherals.UART1, uart_config)
 		.unwrap()
 		.with_tx(peripherals.GPIO17)
 		.with_rx(peripherals.GPIO18)
 		.into_async();
 
+	// initialise app
+	let mut app = App::new(display);
+	app.init().await;
+
+	// init parser
 	let mut parser = nmea::Parser::new();
-	info!("GPS Parser Read. Entering async event loop...");
-
-	let mut state: State = State {
-		lat: 0.0,
-		long: 0.0,
-		speed: 0.0
-	};
-
 	let mut byte_buff: [u8; 1] = [0];
 
 	loop {
+		// read data from GPS
 		match gps_uart.read_async(&mut byte_buff).await {
 			Ok(bytes_read) => {
 				if bytes_read < 1 {
@@ -148,21 +175,10 @@ async fn main(spawner: Spawner) -> ! {
 					if parser.valid_checksum {
 						if let Some(ref result) = parser.result {
 							match result {
-								nmea::ParserResult::GGA(gga) => {
-									info!(
-										"GPS Fix: {:?} | Sats: {} | Lat: {:.5} | Long: {:.5} | Alt: {}m",
-										gga.quality, gga.numSV, gga.lat, gga.long, gga.alt
-									);
-								},
 								nmea::ParserResult::RMC(rmc) => {
-									info!(
-										"Time: {:?} | Date: {:?} | Latitude: {:.5} | Longitude: {:.5} | Speed: {:.5}",
-										rmc.time, rmc.date, rmc.lat, rmc.long, rmc.spd
-									);
-									state.lat = rmc.lat;
-									state.long = rmc.long;
-									state.speed = rmc.spd;
-									render(&mut display, &state);
+									let latest_temp = temp_rx.try_get().unwrap_or(0.0);
+									app.update_gps(rmc.lat, rmc.long, rmc.spd * 1.852, latest_temp);
+									app.render();
 								},
 								_ => {}
 							}
@@ -177,30 +193,22 @@ async fn main(spawner: Spawner) -> ! {
 	}
 }
 
-struct State {
-	lat: f64,
-	long: f64,
-	speed: f64
-}
+static TEMPERATURE_WATCHER: Watch<CriticalSectionRawMutex, f32, 2> = Watch::new();
 
-fn render(display: &mut rlcd::Display, state: &State) {
-	display.ColourClear(rlcd::BinaryColour::Black);
+#[embassy_executor::task]
+async fn temperature_worker(mut sensor: ShtC3<I2c<'static, Blocking>>) {
+	let mut ticker = Ticker::every(Duration::from_secs(30));
+	let temp_tx = TEMPERATURE_WATCHER.sender();
 
-	let text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
+	let mut delay = Delay;
 
-	Text::new("My Bike Computer!", Point::new(10, 30), text_style)
-		.draw(display)
-		.unwrap();
+	loop {
+		match sensor.measure_temperature(PowerMode::NormalMode, &mut delay) {
+			Ok(temp) =>
+				temp_tx.send(temp.as_degrees_celsius()),
+			Err(_) => {}
+		}
 
-	let position_text = format!("Current coordinates: {:.4}, {:.4}", state.lat, state.long);
-	Text::new(&position_text, Point::new(10, 60), text_style)
-		.draw(display)
-		.unwrap();
-
-	let speed_text = format!("Current speed: {:.2}", state.speed);
-	Text::new(&speed_text, Point::new(10, 90), text_style)
-		.draw(display)
-		.unwrap();
-
-	display.flush();
+		ticker.next().await;
+	}
 }

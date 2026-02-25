@@ -50,6 +50,7 @@ pub struct Date {
 	pub year: u8
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct GGA {
 	pub time: Time,              // UTC time
@@ -68,6 +69,7 @@ pub struct GGA {
 	pub diffStation: Option<f64> // id of station providing differential corrections (blank when DGPS is not used)
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct GLL {
 	pub lat: f64,     // latitude
@@ -79,6 +81,7 @@ pub struct GLL {
 	pub posMode: char // positioning mode
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct GSA {
 	pub opMode: char,
@@ -90,6 +93,7 @@ pub struct GSA {
 	pub systemId: u8
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct GSV {
 	pub numMsg: u8,
@@ -102,6 +106,7 @@ pub struct GSV {
 	pub signalId: u8
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct RMC {
 	pub time: Time,
@@ -119,6 +124,7 @@ pub struct RMC {
 	pub navStatus: char
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug)]
 pub struct VTG {
 	pub cogt: f64,
@@ -326,21 +332,6 @@ impl Parser {
 				continue;
 			}
 			result = result * 10 + (buff[i] - b'0') as u16;
-		}
-
-		return result;
-	}
-	fn parse_u32_from_u8_buffer(buff: &[u8]) -> u32 {
-		if buff.len() < 1 {
-			return 0;
-		}
-		
-		let mut result: u32 = 0;
-		for i in 0..buff.len() {
-			if buff[i] < b'0' || buff[i] > b'9' {
-				continue;
-			}
-			result = result * 10 + (buff[i] - b'0') as u32;
 		}
 
 		return result;
