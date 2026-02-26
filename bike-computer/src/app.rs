@@ -1,3 +1,8 @@
+use display_interface::WriteOnlyDataCommand;
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::delay::DelayNs;
+use embassy_time::Delay;
+use st7305::St7305;
 use embedded_graphics::{
 	mono_font::{
 		MonoTextStyle,
@@ -23,7 +28,6 @@ use micromath::F32Ext;
 use alloc::format;
 
 use crate::nmea::Time;
-use crate::rlcd;
 
 const WIDTH: i32 = 400;
 const HEIGHT: i32 = 300;
@@ -42,14 +46,19 @@ pub struct State {
 	pub time: Time
 }
 
-pub struct App<'a> {
+pub struct App<DI, RST> {
 	pub state: State,
 
-	pub display: rlcd::Display<'a>
+	pub display: St7305<DI, RST>
 }
 
-impl<'a> App<'a> {
-	pub fn new(display: rlcd::Display<'a>) -> Self {
+impl<DI, RST, PinError> App<DI, RST>
+where
+	DI: WriteOnlyDataCommand,
+	RST: OutputPin<Error = PinError>,
+	PinError: core::fmt::Debug
+{
+	pub fn new(display: St7305<DI, RST>) -> Self {
 		App {
 			state: State {
 				lat: 0.0,
@@ -70,9 +79,13 @@ impl<'a> App<'a> {
 	}
 
 	pub async fn init(&mut self) {
-		self.display.init().await;
-		self.display.clear(BinaryColor::Off).unwrap();
-		self.display.flush();
+		let mut delay = Delay;
+
+		delay.delay_ms(500).await;
+		self.display.init_async(&mut delay).await.unwrap();
+
+		self.display.color_clear(st7305::BinaryColor::Off as u8);
+		self.display.flush().unwrap();
 	}
 
 	pub fn update_state(&mut self, lat: f32, long: f32, speed: f32, temp: f32, time: Time) {
@@ -86,7 +99,7 @@ impl<'a> App<'a> {
 	}
 
 	pub fn render(&mut self) {
-		self.display.colour_clear(rlcd::BinaryColour::Black);
+		self.display.color_clear(st7305::BinaryColor::Off as u8);
 
 		// styles
 		let large_text_style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
@@ -220,7 +233,7 @@ impl<'a> App<'a> {
 			.draw(&mut self.display)
 			.unwrap();
 
-		self.display.flush();
+		self.display.flush().unwrap();
 	}
 }
 

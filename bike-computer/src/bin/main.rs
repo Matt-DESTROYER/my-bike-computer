@@ -29,6 +29,9 @@ use esp_hal::{
 		Uart
 	}
 };
+use embedded_hal_bus::spi::ExclusiveDevice;
+use display_interface_spi::SPIInterface;
+use st7305::St7305;
 use shtcx::{
 	PowerMode,
 	ShtC3,
@@ -46,7 +49,6 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 }
 
 use bike_computer::nmea;
-use bike_computer::rlcd;
 use bike_computer::app::App;
 
 const CONNECTIONS_MAX: usize = 1;
@@ -130,20 +132,20 @@ async fn main(spawner: Spawner) -> ! {
 	let rlcd_rst  = peripherals.GPIO41;
 
 	// configure RLCD display
-	let cs_output  = Output::new(rlcd_cs, Level::High, OutputConfig::default());
 	let dc_output  = Output::new(rlcd_ds, Level::Low, OutputConfig::default());
+	let cs_output = Output::new(rlcd_cs, Level::High, OutputConfig::default());
 	let rst_output = Output::new(rlcd_rst, Level::High, OutputConfig::default());
 
 	let rlcd_spi_config = esp_hal::spi::master::Config::default()
 		.with_frequency(Rate::from_mhz(10))
 		.with_mode(Mode::_0);
-
 	let rlcd_spi = esp_hal::spi::master::Spi::new(peripherals.SPI2, rlcd_spi_config)
 		.unwrap()
 		.with_sck(rlcd_sclk)
 		.with_mosi(rlcd_din);
-
-	let display = rlcd::Display::new(rlcd_spi, cs_output, dc_output, rst_output);
+	let spi_device = ExclusiveDevice::new_no_delay(rlcd_spi, cs_output).unwrap();
+	let di = SPIInterface::new(spi_device, dc_output);
+	let display = St7305::new(di, rst_output);
 
 	// configure SHTC3
 	let i2c_config = I2cConfig::default()
