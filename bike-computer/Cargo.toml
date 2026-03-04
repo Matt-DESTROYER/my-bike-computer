@@ -2,7 +2,7 @@
 edition      = "2024"
 name         = "bike-computer"
 rust-version = "1.92"
-version      = "0.1.0"
+version      = "0.2.0"
 
 [[bin]]
 name = "bike-computer"
@@ -71,6 +71,7 @@ embedded-hal = "1.0.0"
 st7305 = { version = "0.1.2", features = [ "async", "graphics" ] }
 embedded-hal-bus = "0.3.0"
 display-interface-spi = "0.5.0"
+nb = "1.1.0"
 
 [profile.dev]
 # Rust debug is too slow.

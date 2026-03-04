@@ -15,7 +15,14 @@ use embassy_sync::{
 	watch::Watch
 };
 use esp_hal::{
-	Blocking, Config, clock::CpuClock, gpio::{
+	Blocking,
+	Config,
+	analog::adc::{
+		Adc,
+		AdcConfig,
+		Attenuation
+	},
+	clock::CpuClock, gpio::{
 		Level,
 		Output,
 		OutputConfig
@@ -24,11 +31,15 @@ use esp_hal::{
 		Config as I2cConfig,
 		I2c
 	},
-	spi::Mode, time::Rate, timer::timg::TimerGroup, uart::{
+	spi::Mode,
+	time::Rate,
+	timer::timg::TimerGroup,
+	uart::{
 		Config as UartConfig,
 		Uart
 	}
 };
+use nb;
 use embedded_hal_bus::spi::ExclusiveDevice;
 use display_interface_spi::SPIInterface;
 use st7305::St7305;
@@ -167,6 +178,14 @@ async fn main(spawner: Spawner) -> ! {
 		.with_rx(peripherals.GPIO18)
 		.into_async();
 
+	// configure the ADC (for battery percentage)
+	let mut adc1_config = AdcConfig::new();
+	let mut bat_pin = adc1_config.enable_pin(
+		peripherals.GPIO4,
+		Attenuation::_11dB
+	);
+	let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+
 	// initialise app
 	let mut app = App::new(display);
 	app.init().await;
@@ -206,6 +225,18 @@ async fn main(spawner: Spawner) -> ! {
 			},
 			Err(_) => Timer::after(Duration::from_millis(5)).await
 		}
+
+		// calculate battery percentage
+		let raw_value: u16 = nb::block!(adc1.read_oneshot(&mut bat_pin)).unwrap();
+		let pin_voltage = (raw_value as f32 / 4095.0) * 3.1;
+		let bat_voltage = pin_voltage * 3.0;
+		let mut percentage = ((bat_voltage - 3.0) / 1.12) * 100.0;
+		if percentage > 100.0 {
+			percentage = 100.0;
+		} else if percentage < 0.0 {
+			percentage = 0.0;
+		}
+		app.update_battery(percentage);
 	}
 }
 

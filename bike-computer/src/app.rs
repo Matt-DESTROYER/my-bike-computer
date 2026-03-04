@@ -37,6 +37,8 @@ const HALF_HEIGHT: i32 = HEIGHT / 2;
 const MAX_SPEED: f32 = 100.0;
 
 pub struct State {
+	pub battery_percentage: f32,
+
 	pub lat: f32,
 	pub long: f32,
 	pub speed: f32,
@@ -61,6 +63,8 @@ where
 	pub fn new(display: St7305<DI, RST>) -> Self {
 		App {
 			state: State {
+				battery_percentage: 0.0,
+
 				lat: 0.0,
 				long: 0.0,
 				speed: 0.0,
@@ -86,6 +90,10 @@ where
 
 		self.display.color_clear(st7305::BinaryColor::Off as u8);
 		self.display.flush().unwrap();
+	}
+
+	pub fn update_battery(&mut self, battery_percentage: f32) {
+		self.state.battery_percentage = battery_percentage;
 	}
 
 	pub fn update_state(&mut self, lat: f32, long: f32, speed: f32, temp: f32, time: Time) {
@@ -230,6 +238,12 @@ where
 
 		let temp_text = format!("{:.1}°C", self.state.temp);
 		Text::with_alignment(&temp_text, Point::new(WIDTH - 30, 20), large_text_style, Alignment::Right)
+			.draw(&mut self.display)
+			.unwrap();
+
+		// battery percentage
+		let battery_text = format!("{:02}%", self.state.battery_percentage);
+		Text::new(&battery_text, Point::new(5, HEIGHT - 5), large_text_style)
 			.draw(&mut self.display)
 			.unwrap();
 
