@@ -92,18 +92,13 @@ where
 		self.display.flush().unwrap();
 	}
 
-	pub fn update_battery(&mut self, battery_percentage: f32) {
-		self.state.battery_percentage = battery_percentage;
-	}
-
-	pub fn update_state(&mut self, lat: f32, long: f32, speed: f32, temp: f32, time: Time) {
+	pub fn update_state(&mut self, lat: f32, long: f32, speed: f32, temp: f32, time: Time, battery_percentage: f32) {
 		self.state.lat = lat;
 		self.state.long = long;
 		self.state.speed = speed;
-
 		self.state.temp = temp;
-
 		self.state.time = time;
+		self.state.battery_percentage = battery_percentage;
 	}
 
 	pub fn render(&mut self) {

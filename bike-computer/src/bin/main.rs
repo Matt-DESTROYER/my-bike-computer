@@ -15,26 +15,16 @@ use embassy_sync::{
 	watch::Watch
 };
 use esp_hal::{
-	Blocking,
-	Config,
-	analog::adc::{
-		Adc,
-		AdcConfig,
-		Attenuation
-	},
-	clock::CpuClock, gpio::{
+	Blocking, Config, analog::adc::{
+		Adc, AdcConfig, AdcPin, Attenuation
+	}, clock::CpuClock, gpio::{
 		Level,
 		Output,
 		OutputConfig
-	},
-	i2c::master::{
+	}, i2c::master::{
 		Config as I2cConfig,
 		I2c
-	},
-	spi::Mode,
-	time::Rate,
-	timer::timg::TimerGroup,
-	uart::{
+	}, peripherals::ADC1, spi::Mode, time::Rate, timer::timg::TimerGroup, uart::{
 		Config as UartConfig,
 		Uart
 	}
@@ -180,11 +170,13 @@ async fn main(spawner: Spawner) -> ! {
 
 	// configure the ADC (for battery percentage)
 	let mut adc1_config = AdcConfig::new();
-	let mut bat_pin = adc1_config.enable_pin(
+	let battery_pin = adc1_config.enable_pin(
 		peripherals.GPIO4,
 		Attenuation::_11dB
 	);
-	let mut adc1 = Adc::new(peripherals.ADC1, adc1_config);
+	let adc1 = Adc::new(peripherals.ADC1, adc1_config);
+	spawner.spawn(battery_worker(adc1, battery_pin)).unwrap();
+	let mut battery_rx = BATTERY_WATCHER.receiver().unwrap();
 
 	// initialise app
 	let mut app = App::new(display);
@@ -208,14 +200,15 @@ async fn main(spawner: Spawner) -> ! {
 					if let Some(ref result) = parser.result {
 						match result {
 							nmea::ParserResult::RMC(rmc) => {
-								let latest_temp = temp_rx.try_get().unwrap_or(0.0);
+								let latest_temp = temp_rx.try_get().unwrap_or(app.state.temp);
+								let latest_battery = battery_rx.try_get().unwrap_or(app.state.battery_percentage);
 								let mut time = rmc.time;
 								// AEST = UTC+11
 								time.hour += 11;
-								if time.hour > 24 {
+								if time.hour >= 24 {
 									time.hour -= 24;
 								}
-								app.update_state(rmc.lat as f32, rmc.long as f32, rmc.spd as f32 * 1.852, latest_temp, time);
+								app.update_state(rmc.lat as f32, rmc.long as f32, rmc.spd as f32 * 1.852, latest_temp, time, latest_battery);
 								app.render();
 							},
 							_ => {}
@@ -225,22 +218,11 @@ async fn main(spawner: Spawner) -> ! {
 			},
 			Err(_) => Timer::after(Duration::from_millis(5)).await
 		}
-
-		// calculate battery percentage
-		let raw_value: u16 = nb::block!(adc1.read_oneshot(&mut bat_pin)).unwrap();
-		let pin_voltage = (raw_value as f32 / 4095.0) * 3.1;
-		let bat_voltage = pin_voltage * 3.0;
-		let mut percentage = ((bat_voltage - 3.0) / 1.12) * 100.0;
-		if percentage > 100.0 {
-			percentage = 100.0;
-		} else if percentage < 0.0 {
-			percentage = 0.0;
-		}
-		app.update_battery(percentage);
 	}
 }
 
 static TEMPERATURE_WATCHER: Watch<CriticalSectionRawMutex, f32, 2> = Watch::new();
+static BATTERY_WATCHER: Watch<CriticalSectionRawMutex, f32, 2> = Watch::new();
 
 #[embassy_executor::task]
 async fn temperature_worker(mut sensor: ShtC3<I2c<'static, Blocking>>) {
@@ -255,6 +237,30 @@ async fn temperature_worker(mut sensor: ShtC3<I2c<'static, Blocking>>) {
 				temp_tx.send(temp.as_degrees_celsius()),
 			Err(_) => {}
 		}
+
+		ticker.next().await;
+	}
+}
+
+#[embassy_executor::task]
+async fn battery_worker(
+	mut adc1: Adc<'static, ADC1<'static>, Blocking>,
+	mut battery_pin: AdcPin<esp_hal::peripherals::GPIO4<'static>, ADC1<'static>>
+) {
+	let mut ticker = Ticker::every(Duration::from_secs(60));
+	let battery_tx = BATTERY_WATCHER.sender();
+
+	loop {
+		let raw_value: u16 = nb::block!(adc1.read_oneshot(&mut battery_pin)).unwrap();
+		let pin_voltage = (raw_value as f32 / 4095.0) * 3.1;
+		let bat_voltage = pin_voltage * 3.0;
+		let mut percentage = ((bat_voltage - 3.0) / 1.12) * 100.0;
+		if percentage > 100.0 {
+			percentage = 100.0;
+		} else if percentage < 0.0 {
+			percentage = 0.0;
+		}
+		battery_tx.send(percentage);
 
 		ticker.next().await;
 	}
